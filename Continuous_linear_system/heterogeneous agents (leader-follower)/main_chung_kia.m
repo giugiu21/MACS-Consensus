@@ -192,11 +192,8 @@ fprintf('e ingresso. Ogni follower deve raggiungere x⁰(tₖ) entro tₖ₊₁.
 results_dir = fullfile(fileparts(mfilename('fullpath')), 'results');
 plot_chung_kia_results(results, agents, graph, T_s, time, results_dir);
 
-%questo serve per il file: animate_chung_kia
-%animate_chung_kia(results, agents, graph, T_s, time);
-
 % Animazione file: animate_chung_kia_v2
-animate_chung_kia_v2(time, results, agents, T_s);
+animate_chung_kia(time, results, agents, T_s);
 
 % Oppure salvando il video:
 % animate_chung_kia_v2(time, results, agents, graph, T_s, 'leader_follower.mp4');

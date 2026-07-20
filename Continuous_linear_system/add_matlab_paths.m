@@ -11,5 +11,5 @@ addpath(fullfile(root_dir, 'dynamics'));
 addpath(fullfile(root_dir, 'triggers'));
 addpath(fullfile(root_dir, 'simulation'));
 addpath(fullfile(root_dir, 'analysis'));
-%addpath(fullfile(root_dir, 'visualization'));
+addpath(fullfile(root_dir, 'visualization'));
 end

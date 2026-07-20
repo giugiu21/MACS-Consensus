@@ -1,384 +1,220 @@
-function animate_chung_kia(results, agents, graph, T_s, time, varargin)
-% animate_chung_kia  –  Animazione del consenso leader-follower (Chung & Kia 2020)
+function animate_chung_kia_v2(time, results, agents, T_s, video_filename)
+% animate_chung_kia_v2  –  Animazione leader-follower eterogeneo
 %
-% Mostra in tempo reale:
-%   - Posizioni degli agenti su asse orizzontale (staggered per livello)
-%   - Frecce di comunicazione continua tra follower (grigie)
-%   - Flash rosso agli istanti di campionamento leader→F1,F2
-%   - Grafo di comunicazione animato nel pannello laterale
-%   - Frecce di velocità istantanea per ogni agente
+% Costruita sulla stessa logica di animate_mass_consensus:
+%   - ogni agente è una massa quadrata su una riga orizzontale
+%   - una molla collega la parete sinistra alla massa
+%   - il leader è una stella rossa su una riga aggiuntiva
+%   - agli istanti di campionamento lampeggia la linea verticale rossa
+%     che mostra x⁰(tₖ) — il target corrente dei follower
 %
 % USO:
-%   animate_chung_kia(results, agents, graph, T_s, time)
-%   animate_chung_kia(results, agents, graph, T_s, time, 'speed', 3)
-%   animate_chung_kia(results, agents, graph, T_s, time, 'save_gif', true)
-%
-% OPZIONI:
-%   'speed'    – moltiplicatore velocità animazione (default: 2)
-%   'save_gif' – true per salvare GIF (default: false)
+%   animate_chung_kia_v2(time, results, agents, graph, T_s)
+%   animate_chung_kia_v2(time, results, agents, graph, T_s, 'output.mp4')
 
-%% ── Parse opzioni ────────────────────────────────────────────────────────
-p = inputParser;
-addParameter(p, 'speed',    2,     @isnumeric);
-addParameter(p, 'save_gif', false, @islogical);
-parse(p, varargin{:});
+if nargin < 6
+    video_filename = "";
+end
 
-speed    = p.Results.speed;
-save_gif = p.Results.save_gif;
+%% ── Estrai dati ──────────────────────────────────────────────────────────
+N        = length(agents);
+n_steps  = length(time);
+dt_val   = time(2) - time(1);
+%n_ep     = floor(time(end) / T_s);
 
-%% ── Setup base ───────────────────────────────────────────────────────────
-N       = length(agents);
-n_steps = length(time);
-dt_val  = time(2) - time(1);
+% Posizioni: followers (N×M) e leader (1×M)
+q_foll   = results.pos;          % N × n_steps
+q_leader = results.leader_pos;   % 1 × n_steps
 
-% Subsample per fluidità animazione
-target_fps  = 30;
-step_skip   = max(1, round(speed / (target_fps * dt_val)));
-anim_idx    = 1 : step_skip : n_steps;
+%% ── Range asse x ─────────────────────────────────────────────────────────
+all_q    = [q_foll(:); q_leader(:)];
+q_min    = min(all_q);
+q_max    = max(all_q);
+q_margin = 0.2 * max(1, q_max - q_min);
 
-n_ep = floor(time(end) / T_s);
+wall_x   = q_min - q_margin * 0.6;
 
-%% ── Palette colori ───────────────────────────────────────────────────────
-bg_dark    = [0.10, 0.10, 0.16];
-bg_panel   = [0.07, 0.07, 0.12];
-col_grid   = [0.25, 0.25, 0.30];
-col_leader = [0.92, 0.20, 0.20];
-col_text   = [0.92, 0.92, 0.95];
-col_epoch  = [1.00, 0.85, 0.20];
-col_err    = [0.50, 0.95, 0.60];
+%% ── Righe y ─────────────────────────────────────────────────────────────
+% Follower: righe 1..N (dal basso)
+% Leader:   riga N+1.5 (sopra, separato da un gap)
+y_foll   = 1:N;
+y_lead   = N + 1.5;
 
-% Colori per livello gerarchico
-col_hop1 = [0.25, 0.55, 0.95];   % F1, F2  – blu
-col_hop2 = [0.20, 0.78, 0.45];   % F3, F4  – verde
-col_hop3 = [0.72, 0.30, 0.90];   % F5      – viola
+y_labels = [compose('F%d', 1:N), {'Leader'}];
+y_ticks  = [y_foll, y_lead];
+
+%% ── Figura ───────────────────────────────────────────────────────────────
+figure('Name', 'Chung & Kia – Leader-Follower Animation', ...
+    'Position', [100, 100, 1050, 560]);
+
+hold on;
+grid on;
+
+xlabel('posizione [m]');
+ylabel('agente');
+title('leader-follower eterogeneo — Chung & Kia (2020)');
+
+xlim([wall_x, q_max + q_margin]);
+ylim([0.5, y_lead + 0.8]);
+
+set(gca, 'YTick', y_ticks, 'YTickLabel', y_labels);
+
+%% ── Colori per livello gerarchico ────────────────────────────────────────
+col_hop1   = [0.20, 0.50, 0.90];   % F1, F2  — blu
+col_hop2   = [0.15, 0.72, 0.40];   % F3, F4  — verde
+col_hop3   = [0.65, 0.25, 0.85];   % F5      — viola
+col_leader = [0.90, 0.15, 0.15];   % leader  — rosso
 
 agent_col = [col_hop1; col_hop1; col_hop2; col_hop2; col_hop3];
 
-%% ── Posizioni y per visualizzazione staggered ────────────────────────────
-% (asse x = posizione fisica, asse y = livello agente)
-y_lead = 6.5;
-y_pos  = [5.0, 5.0, 3.5, 3.5, 2.0];   % F1..F5
-
-% Range posizione
-all_pos = [results.pos(:); results.leader_pos(:)];
-x_min   = min(all_pos) - 0.5;
-x_max   = max(all_pos) + 0.5;
-
-%% ── Crea figura ──────────────────────────────────────────────────────────
-fig = figure('Name', 'Chung & Kia – Animazione', ...
-    'Position', [40, 40, 1150, 580], ...
-    'Color', bg_dark, ...
-    'NumberTitle', 'off');
-
-tl = tiledlayout(fig, 1, 3, 'TileSpacing', 'tight', 'Padding', 'compact');
-%tl.BackgroundColor = bg_dark;
-
-%% ════════════════════════════════════════════════════════════════════════
-%  PANNELLO PRINCIPALE  (2/3 dello spazio)
-%% ════════════════════════════════════════════════════════════════════════
-ax = nexttile(tl, 1, [1, 2]);
-ax.Color            = bg_panel;
-ax.XColor           = col_text;
-ax.YColor           = col_text;
-ax.GridColor        = col_grid;
-ax.GridAlpha        = 0.5;
-ax.MinorGridAlpha   = 0.2;
-ax.FontSize         = 10;
-hold(ax, 'on');
-grid(ax, 'on');
-
-xlim(ax, [x_min, x_max]);
-ylim(ax, [1.0, 7.5]);
-xlabel(ax, 'posizione [m]', 'Color', col_text, 'FontSize', 11);
-
-% Etichette asse y — valori unici
-yticks(ax, [y_pos(5), mean([y_pos(4), y_pos(3)]), y_pos(2), y_lead]);
-yticklabels(ax, {'F5  (hop 3)', 'F3-F4  (hop 2)', 'F1-F2  (N⁰ᵢₙ)', 'Leader'});
-
-% Titolo dinamico
-h_title = title(ax, 't = 0.000 s  |  epoca k = 0', ...
-    'Color', col_text, 'FontSize', 12, 'FontWeight', 'bold');
-
-%% ── Tracce storiche (faint) ──────────────────────────────────────────────
-for i = 1:N
-    c = agent_col(i,:);
-    plot(ax, results.pos(i,:), y_pos(i) * ones(1,n_steps), ...
-        '-', 'Color', [c, 0.12], 'LineWidth', 1.2);
-end
-plot(ax, results.leader_pos, y_lead * ones(1,n_steps), ...
-    '-', 'Color', [col_leader, 0.12], 'LineWidth', 1.2);
-
-%% ── Linee orizzontali di riferimento per livello ────────────────────────
-for i = 1:N
-    plot(ax, [x_min, x_max], [y_pos(i), y_pos(i)], ...
-        '-', 'Color', [agent_col(i,:), 0.18], 'LineWidth', 0.6);
-end
-plot(ax, [x_min, x_max], [y_lead, y_lead], ...
-    '-', 'Color', [col_leader, 0.18], 'LineWidth', 0.6);
-
-%% ── Marcatori campioni leader (+) ────────────────────────────────────────
-for k = 0:n_ep-1
-    idx_s = min(round(k * T_s / dt_val) + 1, n_steps);
-    plot(ax, results.leader_pos(idx_s), y_lead, 'w+', ...
-        'MarkerSize', 12, 'LineWidth', 2.0);
-end
-
-%% ── Linee di comunicazione continua (follower→follower) ─────────────────
-% Aggiornate ad ogni frame con le posizioni correnti
-% Struttura bordi: A_adj(i,j)=1 → i riceve da j
-edges = [];   % [j_sender, i_receiver] secondo la convenzione del paper
-for i = 1:N
-    for j = 1:N
-        if graph.A_adj(i,j)
-            edges(end+1,:) = [j, i]; %#ok<AGROW>
-        end
-    end
-end
-n_edges = size(edges, 1);
-
-h_comm = gobjects(n_edges, 1);
-for e = 1:n_edges
-    j_s = edges(e,1);   % sender
-    i_r = edges(e,2);   % receiver
-    h_comm(e) = plot(ax, ...
-        [results.pos(j_s,1), results.pos(i_r,1)], ...
-        [y_pos(j_s), y_pos(i_r)], ...
-        '-', 'Color', [0.75, 0.75, 0.75, 0.35], 'LineWidth', 1.3);
-end
-
-%% ── Linee di campionamento leader→F1, leader→F2 (flash) ─────────────────
-h_flash1 = plot(ax, [results.leader_pos(1), results.pos(1,1)], ...
-    [y_lead, y_pos(1)], '--', 'Color', [col_leader, 0.0], 'LineWidth', 2.5);
-h_flash2 = plot(ax, [results.leader_pos(1), results.pos(2,1)], ...
-    [y_lead, y_pos(2)], '--', 'Color', [col_leader, 0.0], 'LineWidth', 2.5);
-
-%% ── Dot agenti (animati) ─────────────────────────────────────────────────
-h_dot  = gobjects(N, 1);
-h_vel  = gobjects(N, 1);
-h_lbl  = gobjects(N, 1);
+%% ── Molle e masse: follower ──────────────────────────────────────────────
+spring_lines = gobjects(N, 1);
+mass_markers = gobjects(N, 1);
 
 for i = 1:N
-    h_dot(i) = plot(ax, results.pos(i,1), y_pos(i), 'o', ...
-        'MarkerSize', 20, ...
+    spring_lines(i) = plot( ...
+        [wall_x, q_foll(i, 1)], [y_foll(i), y_foll(i)], ...
+        '-', 'Color', agent_col(i,:), 'LineWidth', 1.2);
+
+    mass_markers(i) = plot( ...
+        q_foll(i, 1), y_foll(i), 's', ...
+        'MarkerSize', 16, ...
         'MarkerFaceColor', agent_col(i,:), ...
-        'MarkerEdgeColor', 'white', ...
-        'LineWidth', 1.8);
-    % Etichetta dentro il cerchio
-    h_lbl(i) = text(ax, results.pos(i,1), y_pos(i), sprintf('F%d',i), ...
-        'Color', 'white', 'FontSize', 8, 'FontWeight', 'bold', ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-    % Freccia velocità
-    h_vel(i) = quiver(ax, results.pos(i,1), y_pos(i)+0.38, ...
-        0, 0, 0, ...
-        'Color', agent_col(i,:), 'LineWidth', 1.8, ...
-        'MaxHeadSize', 1.5, 'AutoScale', 'off');
+        'MarkerEdgeColor', 'k', ...
+        'LineWidth', 1.0);
 end
 
-% Dot leader
-h_lead_dot = plot(ax, results.leader_pos(1), y_lead, 'pentagram', ...
-    'MarkerSize', 24, ...
+%% ── Molla e massa: leader ────────────────────────────────────────────────
+leader_spring = plot( ...
+    [wall_x, q_leader(1)], [y_lead, y_lead], ...
+    '-', 'Color', col_leader, 'LineWidth', 1.5);
+
+leader_marker = plot( ...
+    q_leader(1), y_lead, 'p', ...
+    'MarkerSize', 20, ...
     'MarkerFaceColor', col_leader, ...
-    'MarkerEdgeColor', 'white', 'LineWidth', 1.8);
-h_lead_lbl = text(ax, results.leader_pos(1), y_lead, 'L', ...
-    'Color', 'white', 'FontSize', 9, 'FontWeight', 'bold', ...
-    'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-h_lead_vel = quiver(ax, results.leader_pos(1), y_lead+0.42, ...
-    0, 0, 0, ...
-    'Color', col_leader, 'LineWidth', 1.8, ...
-    'MaxHeadSize', 1.5, 'AutoScale', 'off');
+    'MarkerEdgeColor', 'k', ...
+    'LineWidth', 1.2);
 
-%% ════════════════════════════════════════════════════════════════════════
-%  PANNELLO GRAFO  (1/3 dello spazio)
-%% ════════════════════════════════════════════════════════════════════════
-ax_g = nexttile(tl, 3);
-ax_g.Color = bg_panel;
-hold(ax_g, 'on');
-axis(ax_g, 'off');
-xlim(ax_g, [-0.3, 1.3]);
-ylim(ax_g, [-0.45, 1.35]);
+%% ── Linea verticale: target corrente x⁰(tₖ) ─────────────────────────────
+% Mostra dove i follower devono arrivare entro fine epoca
+target_line = xline(q_leader(1), '--r', ...
+    sprintf('x^0(t_k) = %.3f', q_leader(1)), ...
+    'LineWidth', 1.8, 'Color', col_leader, 'Alpha', 0.7);
 
-title(ax_g, 'Grafo di comunicazione', ...
-    'Color', col_text, 'FontSize', 11, 'FontWeight', 'bold');
+%% ── Linea verticale: media follower (come in animate_mass_consensus) ─────
+mean_line = xline(mean(q_foll(:, 1)), ':', ...
+    'media follower', ...
+    'LineWidth', 1.2, 'Color', [0.4, 0.4, 0.4]);
 
-% Posizioni nodi nel pannello grafo
-gnx = [0.15, 0.85, 0.15, 0.85, 0.50];   % F1..F5
-gny = [0.90, 0.90, 0.55, 0.55, 0.18];
-gnx_l = 0.50;  gny_l = 1.22;            % Leader
+%% ── Separatore visivo tra follower e leader ──────────────────────────────
+yline(N + 0.75, '-', 'Color', [0.7, 0.7, 0.7], 'LineWidth', 0.8);
 
-% Spigoli follower→follower (statici, grigi)
-for e = 1:n_edges
-    j_s = edges(e,1);
-    i_r = edges(e,2);
-    plot(ax_g, [gnx(j_s), gnx(i_r)], [gny(j_s), gny(i_r)], ...
-        '-', 'Color', [0.7, 0.7, 0.7, 0.45], 'LineWidth', 1.5);
+%% ── Testo info: epoca e campionamento ────────────────────────────────────
+txt_epoch = text( ...
+    wall_x + 0.05 * (q_max - wall_x), ...
+    y_lead + 0.55, ...
+    'k = 0', ...
+    'FontSize', 10, 'Color', [0.8, 0.5, 0.0], 'FontWeight', 'bold');
+
+txt_err = text( ...
+    wall_x + 0.05 * (q_max - wall_x), ...
+    y_lead + 0.25, ...
+    'max |err| = —', ...
+    'FontSize', 9, 'Color', [0.1, 0.6, 0.2]);
+
+%% ── Legenda ──────────────────────────────────────────────────────────────
+legend( ...
+    [mass_markers; leader_marker; target_line; mean_line], ...
+    [compose('F%d', 1:N), ...
+    {'leader x^0(t)'}, ...
+    {'target x^0(t_k)'}, ...
+    {'media follower'}], ...
+    'Location', 'southeast', ...
+    'FontSize', 8);
+
+%% ── Video writer ─────────────────────────────────────────────────────────
+if strlength(string(video_filename)) > 0
+    writer           = VideoWriter(video_filename, 'MPEG-4');
+    writer.FrameRate = 30;
+    open(writer);
+else
+    writer = [];
 end
 
-% Spigoli leader→F1, F2 (flash)
-g_fl1 = plot(ax_g, [gnx_l, gnx(1)], [gny_l, gny(1)], ...
-    '--', 'Color', [col_leader, 0.15], 'LineWidth', 2.2);
-g_fl2 = plot(ax_g, [gnx_l, gnx(2)], [gny_l, gny(2)], ...
-    '--', 'Color', [col_leader, 0.15], 'LineWidth', 2.2);
+%% ── Subsample (come in animate_mass_consensus) ───────────────────────────
+skip = max(1, floor(n_steps / 1500));
 
-% Nodi follower
-for i = 1:N
-    plot(ax_g, gnx(i), gny(i), 'o', ...
-        'MarkerSize', 26, ...
-        'MarkerFaceColor', agent_col(i,:), ...
-        'MarkerEdgeColor', 'white', 'LineWidth', 1.5);
-    text(ax_g, gnx(i), gny(i), sprintf('F%d',i), ...
-        'Color', 'white', 'FontSize', 10, 'FontWeight', 'bold', ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-end
+prev_epoch = -1;
 
-% Nodo leader
-plot(ax_g, gnx_l, gny_l, 'pentagram', ...
-    'MarkerSize', 28, ...
-    'MarkerFaceColor', col_leader, ...
-    'MarkerEdgeColor', 'white', 'LineWidth', 1.8);
-text(ax_g, gnx_l, gny_l, 'L', ...
-    'Color', 'white', 'FontSize', 10, 'FontWeight', 'bold', ...
-    'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+%% ── Loop animazione ──────────────────────────────────────────────────────
+for k = 1 : skip : n_steps
 
-% Legenda colori
-leg_y = -0.08;
-text(ax_g, 0.5, leg_y, 'N⁰ᵢₙ = {F1, F2}  (campionamento periodico)', ...
-    'Color', [0.7, 0.85, 1.0], 'FontSize', 8, ...
-    'HorizontalAlignment', 'center');
-
-% Testi dinamici
-h_epoch = text(ax_g, 0.5, -0.20, 'epoca k = 0', ...
-    'Color', col_epoch, 'FontSize', 12, 'FontWeight', 'bold', ...
-    'HorizontalAlignment', 'center');
-
-h_err = text(ax_g, 0.5, -0.32, 'max |err| = —', ...
-    'Color', col_err, 'FontSize', 10, ...
-    'HorizontalAlignment', 'center');
-
-h_time_g = text(ax_g, 0.5, -0.42, 't = 0.000 s', ...
-    'Color', [0.7, 0.7, 0.7], 'FontSize', 9, ...
-    'HorizontalAlignment', 'center');
-
-%% ── Legenda comunicazione ────────────────────────────────────────────────
-text(ax_g, -0.25, 0.42, {'── comunicazione', '     continua xʲ(t)'}, ...
-    'Color', [0.75, 0.75, 0.75], 'FontSize', 8);
-text(ax_g, -0.25, 0.25, {'-- campionamento', '     x⁰(tₖ) ogni T_s'}, ...
-    'Color', col_leader, 'FontSize', 8);
-
-%% ════════════════════════════════════════════════════════════════════════
-%  LOOP ANIMAZIONE
-%% ════════════════════════════════════════════════════════════════════════
-vel_scale   = 0.25;    % scala frecce velocità [m / (m/s)]
-flash_total = 12;      % frame di durata del flash
-flash_cnt   = 0;
-prev_epoch  = -1;
-
-gif_data = {};
-
-fprintf('Animazione avviata — chiudi la finestra per interrompere.\n');
-
-for idx = 1:length(anim_idx)
-
-    if ~isvalid(fig), break; end   % finestra chiusa dall'utente
-
-    s    = anim_idx(idx);
-    t    = time(s);
+    t    = time(k);
     k_ep = floor(t / T_s + 1e-10);
 
-    % ── Rileva inizio nuova epoca (flash) ─────────────────────────────
+    q    = q_foll(:, k);          % posizioni follower
+    q_l  = q_leader(k);           % posizione leader
+
+    % ── Aggiorna molle e masse follower ───────────────────────────────
+    for i = 1:N
+        set(spring_lines(i), ...
+            'XData', [wall_x, q(i)], ...
+            'YData', [y_foll(i), y_foll(i)]);
+        set(mass_markers(i), ...
+            'XData', q(i), ...
+            'YData', y_foll(i));
+    end
+
+    % ── Aggiorna molla e massa leader ─────────────────────────────────
+    set(leader_spring, 'XData', [wall_x, q_l], 'YData', [y_lead, y_lead]);
+    set(leader_marker, 'XData', q_l, 'YData', y_lead);
+
+    % ── Aggiorna target x⁰(tₖ): si aggiorna solo a inizio epoca ──────
     if k_ep ~= prev_epoch
         prev_epoch = k_ep;
-        flash_cnt  = flash_total;
-    end
+        idx_sam    = min(round(k_ep * T_s / dt_val) + 1, n_steps);
+        q_target   = q_leader(idx_sam);
 
-    % ── Aggiorna posizioni follower ───────────────────────────────────
-    for i = 1:N
-        set(h_dot(i), 'XData', results.pos(i,s));
-        set(h_lbl(i), 'Position', [results.pos(i,s), y_pos(i), 0]);
+        target_line.Value = q_target;
+        target_line.Label = sprintf('x^0(t_%d) = %.3f m', k_ep, q_target);
 
-        % Freccia velocità (limitata per non uscire dal grafico)
-        vx = max(-0.9, min(0.9, results.vel(i,s) * vel_scale));
-        set(h_vel(i), ...
-            'XData', results.pos(i,s), ...
-            'YData', y_pos(i) + 0.38, ...
-            'UData', vx, 'VData', 0);
-    end
-
-    % ── Aggiorna leader ───────────────────────────────────────────────
-    set(h_lead_dot, 'XData', results.leader_pos(s));
-    set(h_lead_lbl, 'Position', [results.leader_pos(s), y_lead, 0]);
-    vx_l = max(-0.9, min(0.9, results.leader_vel(s) * vel_scale));
-    set(h_lead_vel, ...
-        'XData', results.leader_pos(s), ...
-        'YData', y_lead + 0.42, ...
-        'UData', vx_l, 'VData', 0);
-
-    % ── Aggiorna linee comunicazione continua ─────────────────────────
-    for e = 1:n_edges
-        j_s = edges(e,1);
-        i_r = edges(e,2);
-        set(h_comm(e), ...
-            'XData', [results.pos(j_s,s), results.pos(i_r,s)], ...
-            'YData', [y_pos(j_s), y_pos(i_r)]);
-    end
-
-    % ── Flash campionamento ───────────────────────────────────────────
-    if flash_cnt > 0
-        alpha_f = flash_cnt / flash_total;
-
-        set(h_flash1, ...
-            'XData', [results.leader_pos(s), results.pos(1,s)], ...
-            'YData', [y_lead, y_pos(1)], ...
-            'Color',  [col_leader, alpha_f]);
-        set(h_flash2, ...
-            'XData', [results.leader_pos(s), results.pos(2,s)], ...
-            'YData', [y_lead, y_pos(2)], ...
-            'Color',  [col_leader, alpha_f]);
-        set(g_fl1, 'Color', [col_leader, alpha_f]);
-        set(g_fl2, 'Color', [col_leader, alpha_f]);
-        flash_cnt = flash_cnt - 1;
+        % Flash: rendi la linea più spessa e visibile al cambio epoca
+        target_line.LineWidth = 2.8;
+        target_line.Alpha     = 1.0;
     else
-        set(h_flash1, 'Color', [col_leader, 0.0]);
-        set(h_flash2, 'Color', [col_leader, 0.0]);
-        set(g_fl1,    'Color', [col_leader, 0.10]);
-        set(g_fl2,    'Color', [col_leader, 0.10]);
-    end
-
-    % ── Aggiorna testi ────────────────────────────────────────────────
-    set(h_title,  'String', sprintf('t = %.3f s  |  epoca k = %d', t, k_ep));
-    set(h_epoch,  'String', sprintf('epoca  k = %d', k_ep));
-    set(h_time_g, 'String', sprintf('t = %.3f s', t));
-
-    % Errore corrente rispetto all'ultimo campione
-    idx_sam  = min(round(k_ep * T_s / dt_val) + 1, n_steps);
-    ldr_tgt  = results.leader_pos(idx_sam);
-    max_err  = max(abs(results.pos(:,s) - ldr_tgt));
-    set(h_err, 'String', sprintf('max |err| = %.4f m', max_err));
-
-    drawnow limitrate;
-
-    % ── Cattura frame GIF ─────────────────────────────────────────────
-    if save_gif
-        frame = getframe(fig);
-        gif_data{end+1} = frame2im(frame); %#ok<AGROW>
-    end
-end
-
-% ── Salva GIF ────────────────────────────────────────────────────────────
-if save_gif && ~isempty(gif_data)
-    fname = 'chung_kia_animation.gif';
-    fprintf('Salvataggio GIF in %s ...\n', fname);
-    for idx = 1:length(gif_data)
-        [imind, cm] = rgb2ind(gif_data{idx}, 128);
-        if idx == 1
-            imwrite(imind, cm, fname, 'gif', ...
-                'Loopcount', inf, 'DelayTime', 1/target_fps);
-        else
-            imwrite(imind, cm, fname, 'gif', ...
-                'WriteMode', 'append', 'DelayTime', 1/target_fps);
+        % Dissolvenza graduale
+        if target_line.LineWidth > 1.8
+            target_line.LineWidth = target_line.LineWidth - 0.08;
+            target_line.Alpha     = max(0.5, target_line.Alpha - 0.02);
         end
     end
-    fprintf('GIF salvata.\n');
+
+    % ── Aggiorna media follower ────────────────────────────────────────
+    mean_line.Value = mean(q);
+
+    % ── Aggiorna testi ────────────────────────────────────────────────
+    idx_sam_cur = min(round(k_ep * T_s / dt_val) + 1, n_steps);
+    q_tgt_cur   = q_leader(idx_sam_cur);
+    max_err      = max(abs(q - q_tgt_cur));
+
+    set(txt_epoch, 'String', sprintf('epoca  k = %d', k_ep));
+    set(txt_err,   'String', sprintf('max |err| = %.4f m', max_err));
+
+    title(sprintf( ...
+        'leader-follower eterogeneo — Chung & Kia (2020) — t = %.3f s', t));
+
+    drawnow;
+
+    if ~isempty(writer)
+        frame = getframe(gcf);
+        writeVideo(writer, frame);
+    end
 end
 
-fprintf('Animazione completata.\n');
+if ~isempty(writer)
+    close(writer);
+    fprintf('Video salvato: %s\n', video_filename);
+end
+
 end

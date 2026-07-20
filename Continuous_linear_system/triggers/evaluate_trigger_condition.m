@@ -1,7 +1,9 @@
 function [should_trigger, trigger_value, threshold] = evaluate_trigger_condition( ...
     error_vector, disagreement_vector, sigma, epsilon_trigger, n, ...
-    trigger_type, trigger_params, state_vector, previous_state_vector)
+    trigger_type, trigger_params, state_vector, previous_state_vector, local_motion_rate_vector)
 % evaluate one local event-triggering condition
+%potremmo aggiungere comunque un fixed time tra una comunicazione ed un altra:
+% trigger parte solo se non sono in quella fascia di tempo e se ho raggiunto le condizioni
 
 if nargin < 6 || isempty(trigger_type)
     trigger_type = 'relative';
@@ -93,7 +95,7 @@ switch lower(char(trigger_type))
         % where l >= 1 is user-defined.
 
         state_vector = require_state_vector(state_vector, n, trigger_type);
-        previous_state_vector = require_state_vector( previous_state_vector, n, trigger_type);
+        previous_state_vector = require_state_vector(previous_state_vector, n, trigger_type);
         % Parameters
 
         state_gain = get_scalar_param(trigger_params, 'state_gain', 0.5);
@@ -103,14 +105,43 @@ switch lower(char(trigger_type))
         disagreement_tol = get_scalar_param(trigger_params, 'disagreement_tol', 1e-2);
         dt = get_scalar_param(trigger_params, 'dt', 1e-3);
 
-        lambda = 5; % >=1!!!!!!
+        lambda = 5; % >=1!!!!!! %5 va bene con damped
+
+        system_type = string(trigger_params.system_type);
 
         %Trigger value
-
         trigger_value = norm(error_vector)^2;
 
-        %invece dello stato assoluto sto dando l'errore in spostamento nel tempo
-        state_rate_vector = (state_vector - previous_state_vector)/dt;
+        % State-based candidate threshold
+
+        switch system_type
+
+            case "damped"
+
+                % For the damped system, the absolute state rate tends to zero
+                % when the agents converge to a constant equilibrium.
+                %invece dello stato assoluto sto dando l'errore in spostamento nel tempo
+                state_rate_vector = (state_vector - previous_state_vector)/dt;
+
+            case "undamped"
+
+                % For the undamped system, the absolute state rate generally
+                % does not tend to zero when tracking a periodic trajectory.
+                %
+                % Use the variation of the local disagreement instead, so that
+                % common motion shared by all agents does not affect the trigger.
+
+
+                %tocca rivedere completamente questa parte:
+                %Per sistema undamped quello che ottengo sono comunicazioni praticampere continue
+                %ora periodiche ma solo in base al tempo minimo
+                state_rate_vector = require_state_vector(local_motion_rate_vector, n, trigger_type);
+
+
+            otherwise
+
+                error('Unknown system type "%s".', system_type);
+        end
 
         % Candidate thresholds
 
@@ -143,10 +174,9 @@ switch lower(char(trigger_type))
 
             
         end
-
-
-
-
+        if system_type == "undamped"
+            threshold = max(threshold, 1e-3);
+        end
 
 
 
