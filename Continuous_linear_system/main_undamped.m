@@ -33,7 +33,7 @@ num_steps = numel(time);
 %this was added to maybe later do a comparison between seeds
 %for now I only use the first seed
 seeds = [1, 2, 3];
-seed = seeds(1);
+seed = seeds(2);
 
 %% Initialize agent and communication graph
 
@@ -72,10 +72,10 @@ leader_id = 1;
 %.      - "weighted"
 %.      - ...?
 
-trigger_type = "state-disagreement";
+trigger_type = "relative";
 
-sigma = 0.05; % the smaller the number the more frequent the communications between agents
-epsilon_trigger = 1e-5;
+sigma = 0.2; % the smaller the number the more frequent the communications between agents
+epsilon_trigger = 5e-2;
 
 trigger_params = struct();
 
@@ -235,6 +235,48 @@ results.trigger.leader_follower = ...
         dt, ...
         opts);
 
+%% Run model-based event-triggered leaderless case
+%Tra un evento e l'altro x_hat non resta congelato (ZOH)
+%ma evolve con il modello open-loop dell'agente x_hat_dot = A*x_hat
+
+opts = common_opts;
+
+opts.communication_mode = "event_triggered";
+opts.control_case = "leaderless";
+opts.hold_mode = "model_based";
+
+fprintf('Running model-based leaderless case...\n');
+
+results.model.leaderless = ...
+    run_event_triggered_consensus( ...
+        x0, ...
+        agent, ...
+        graph, ...
+        K_consensus, ...
+        time, ...
+        dt, ...
+        opts);
+
+%% Run model-based event-triggered leader-follower case
+
+opts = common_opts;
+
+opts.communication_mode = "event_triggered";
+opts.control_case = "leader_follower";
+opts.hold_mode = "model_based";
+
+fprintf('Running model-based leader-follower case...\n');
+
+results.model.leader_follower = ...
+    run_event_triggered_consensus( ...
+        x0, ...
+        agent, ...
+        graph, ...
+        K_consensus, ...
+        time, ...
+        dt, ...
+        opts);
+
 %% Getting the results
 
 r_open = results.open_loop;
@@ -244,6 +286,9 @@ r_cont_leader = results.continuous.leader_follower;
 
 r_trig_free = results.trigger.leaderless;
 r_trig_leader = results.trigger.leader_follower;
+
+r_model_free = results.model.leaderless;
+r_model_leader = results.model.leader_follower;
 
 
 %% Console summary
@@ -786,3 +831,343 @@ saveas( ...
 saveas( ...
     fig_trigger_condition, ...
     fullfile(results_dir, 'undamped_trigger_condition.fig'));
+
+%% Figure 8: model-based event-triggered communication times
+
+fig_model_events = figure( ...
+    'Name', 'model-based event-triggered communication times', ...
+    'Position', [100, 100, 1100, 620]);
+
+layout_model_events = tiledlayout(2, 1);
+
+layout_model_events.TileSpacing = 'compact';
+layout_model_events.Padding = 'compact';
+
+%% Model-based leaderless trigger times
+
+[event_agents_model_free, event_steps_model_free] = ...
+    find(r_model_free.event_history);
+
+event_times_model_free = time(event_steps_model_free);
+
+nexttile;
+
+scatter( ...
+    event_times_model_free, ...
+    event_agents_model_free, ...
+    8, ...
+    'filled');
+
+grid on;
+
+xlabel('time [s]');
+ylabel('agent');
+
+title('leaderless');
+
+xlim([time(1), time(end)]);
+ylim([0.5, N + 0.5]);
+
+yticks(1:N);
+
+%% Model-based leader-follower trigger times
+
+[event_agents_model_leader, event_steps_model_leader] = ...
+    find(r_model_leader.event_history);
+
+event_times_model_leader = time(event_steps_model_leader);
+
+nexttile;
+
+scatter( ...
+    event_times_model_leader, ...
+    event_agents_model_leader, ...
+    8, ...
+    'filled');
+
+grid on;
+
+xlabel('time [s]');
+ylabel('agent');
+
+title('leader-follower');
+
+xlim([time(1), time(end)]);
+ylim([0.5, N + 0.5]);
+
+yticks(1:N);
+
+title(layout_model_events, ...
+    sprintf( ...
+    'Model-based event-triggered communication times — %s', ...
+    trigger_type));
+
+saveas( ...
+    fig_model_events, ...
+    fullfile(results_dir, 'undamped_model_based_trigger_times.png'));
+
+saveas( ...
+    fig_model_events, ...
+    fullfile(results_dir, 'undamped_model_based_trigger_times.fig'));
+
+%% Figure 9: outputs — ZOH vs model-based
+
+fig_zm_outputs = figure( ...
+    'Name', 'ZOH vs model-based outputs', ...
+    'Position', [100, 100, 1200, 780]);
+
+layout_zm_outputs = tiledlayout(2, 2);
+
+layout_zm_outputs.TileSpacing = 'compact';
+layout_zm_outputs.Padding = 'compact';
+
+%% Leaderless — ZOH
+
+nexttile;
+
+plot( ...
+    time(plot_mask), ...
+    r_trig_free.y_history(:, plot_mask)', ...
+    'LineWidth', 1.0);
+
+grid on;
+
+xlabel('time [s]');
+ylabel('position');
+
+title('leaderless — ZOH');
+
+xlim([0, plot_end_time]);
+
+%% Leaderless — model-based
+
+nexttile;
+
+plot( ...
+    time(plot_mask), ...
+    r_model_free.y_history(:, plot_mask)', ...
+    'LineWidth', 1.0);
+
+grid on;
+
+xlabel('time [s]');
+ylabel('position');
+
+title('leaderless — model-based');
+
+xlim([0, plot_end_time]);
+
+%% Leader-follower — ZOH
+
+nexttile;
+
+plot( ...
+    time(plot_mask), ...
+    r_trig_leader.y_history(:, plot_mask)', ...
+    'LineWidth', 1.0);
+
+grid on;
+
+xlabel('time [s]');
+ylabel('position');
+
+title('leader-follower — ZOH');
+
+xlim([0, plot_end_time]);
+
+%% Leader-follower — model-based
+
+nexttile;
+
+plot( ...
+    time(plot_mask), ...
+    r_model_leader.y_history(:, plot_mask)', ...
+    'LineWidth', 1.0);
+
+grid on;
+
+xlabel('time [s]');
+ylabel('position');
+
+title('leader-follower — model-based');
+
+xlim([0, plot_end_time]);
+
+title(layout_zm_outputs, ...
+    'Consensus outputs — ZOH vs model-based');
+
+saveas( ...
+    fig_zm_outputs, ...
+    fullfile(results_dir, 'undamped_zoh_vs_model_outputs.png'));
+
+saveas( ...
+    fig_zm_outputs, ...
+    fullfile(results_dir, 'undamped_zoh_vs_model_outputs.fig'));
+
+%% Figure 10: trigger times — ZOH vs model-based
+
+fig_zm_triggers = figure( ...
+    'Name', 'ZOH vs model-based trigger times', ...
+    'Position', [100, 100, 1200, 780]);
+
+layout_zm_triggers = tiledlayout(2, 2);
+
+layout_zm_triggers.TileSpacing = 'compact';
+layout_zm_triggers.Padding = 'compact';
+
+%% Leaderless — ZOH
+
+[ev_agents, ev_steps] = find(r_trig_free.event_history);
+
+nexttile;
+
+scatter(time(ev_steps), ev_agents, 8, 'filled');
+
+grid on;
+
+xlabel('time [s]');
+ylabel('agent');
+
+title('leaderless — ZOH');
+
+xlim([time(1), time(end)]);
+ylim([0.5, N + 0.5]);
+
+yticks(1:N);
+
+%% Leaderless — model-based
+
+[ev_agents, ev_steps] = find(r_model_free.event_history);
+
+nexttile;
+
+scatter(time(ev_steps), ev_agents, 8, 'filled');
+
+grid on;
+
+xlabel('time [s]');
+ylabel('agent');
+
+title('leaderless — model-based');
+
+xlim([time(1), time(end)]);
+ylim([0.5, N + 0.5]);
+
+yticks(1:N);
+
+%% Leader-follower — ZOH
+
+[ev_agents, ev_steps] = find(r_trig_leader.event_history);
+
+nexttile;
+
+scatter(time(ev_steps), ev_agents, 8, 'filled');
+
+grid on;
+
+xlabel('time [s]');
+ylabel('agent');
+
+title('leader-follower — ZOH');
+
+xlim([time(1), time(end)]);
+ylim([0.5, N + 0.5]);
+
+yticks(1:N);
+
+%% Leader-follower — model-based
+
+[ev_agents, ev_steps] = find(r_model_leader.event_history);
+
+nexttile;
+
+scatter(time(ev_steps), ev_agents, 8, 'filled');
+
+grid on;
+
+xlabel('time [s]');
+ylabel('agent');
+
+title('leader-follower — model-based');
+
+xlim([time(1), time(end)]);
+ylim([0.5, N + 0.5]);
+
+yticks(1:N);
+
+title(layout_zm_triggers, ...
+    sprintf( ...
+    'Event-triggered communication times — ZOH vs model-based (%s)', ...
+    trigger_type));
+
+saveas( ...
+    fig_zm_triggers, ...
+    fullfile(results_dir, 'undamped_zoh_vs_model_trigger_times.png'));
+
+saveas( ...
+    fig_zm_triggers, ...
+    fullfile(results_dir, 'undamped_zoh_vs_model_trigger_times.fig'));
+
+%% Figure 11: events per agent — ZOH vs model-based
+
+fig_zm_events = figure( ...
+    'Name', 'ZOH vs model-based events per agent', ...
+    'Position', [100, 100, 1000, 520]);
+
+layout_zm_events = tiledlayout(1, 2);
+
+layout_zm_events.TileSpacing = 'compact';
+layout_zm_events.Padding = 'compact';
+
+%% Leaderless events per agent
+
+nexttile;
+
+bar(1:N, ...
+    [r_trig_free.events_per_agent, r_model_free.events_per_agent]);
+
+grid on;
+
+xlabel('agent');
+ylabel('number of events');
+
+title(sprintf( ...
+    'leaderless — ZOH = %d, model-based = %d', ...
+    r_trig_free.total_events, ...
+    r_model_free.total_events));
+
+xticks(1:N);
+
+legend('ZOH', 'model-based', 'Location', 'northeast');
+
+%% Leader-follower events per agent
+
+nexttile;
+
+bar(1:N, ...
+    [r_trig_leader.events_per_agent, r_model_leader.events_per_agent]);
+
+grid on;
+
+xlabel('agent');
+ylabel('number of events');
+
+title(sprintf( ...
+    'leader-follower — ZOH = %d, model-based = %d', ...
+    r_trig_leader.total_events, ...
+    r_model_leader.total_events));
+
+xticks(1:N);
+
+legend('ZOH', 'model-based', 'Location', 'northeast');
+
+title(layout_zm_events, ...
+    'Event-triggered updates per agent — ZOH vs model-based');
+
+saveas( ...
+    fig_zm_events, ...
+    fullfile(results_dir, 'undamped_zoh_vs_model_events_per_agent.png'));
+
+saveas( ...
+    fig_zm_events, ...
+    fullfile(results_dir, 'undamped_zoh_vs_model_events_per_agent.fig'));
