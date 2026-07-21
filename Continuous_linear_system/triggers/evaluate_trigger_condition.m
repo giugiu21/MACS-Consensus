@@ -49,7 +49,18 @@ switch lower(char(trigger_type))
         %TO DO: justify!!!
         state_gain = get_scalar_param(trigger_params, 'state_gain', 0.5);
         trigger_value = norm(error_vector)^2;
-        threshold = state_gain * norm(state_vector)^2 + epsilon_trigger;%+ epsilon per evitare Zeno behaviour e quindi comunicazione continua
+        %threshold = state_gain * norm(state_vector)^2 + epsilon_trigger;%+ epsilon per evitare Zeno behaviour e quindi comunicazione continua
+
+
+        previous_state_vector = require_state_vector(previous_state_vector, n, trigger_type);
+        dt = get_scalar_param(trigger_params, 'dt', 1e-3);
+
+        state_rate_vector = (state_vector - previous_state_vector)/dt;
+
+        threshold = state_gain * norm(state_rate_vector)^2 + epsilon_trigger;
+
+        disagreement_tol = get_scalar_param(trigger_params, 'disagreement_tol', 1e-2);
+
 
 
 
