@@ -87,9 +87,11 @@ for agent_id = 1:N
 
     state_vector = x(idx_i);
     previous_state_vector = x_previous(idx_i);
-    error_vector = x_hat(idx_i) - x(idx_i); %errore tra l'ultimo stato trasmesso e quello attuale-> è lo spostamento di un agente rispetto a se stesso???
+    %errore tra l'ultimo stato trasmesso e quello attuale
+    error_vector = x_hat(idx_i) - x(idx_i); 
+    %disagreement con i vicini in base allo stato attuale dell'agente 
     disagreement_vector = compute_local_disagreement( ...
-        x, graph, n, agent_id); %prima x_hat
+        x, graph, n, agent_id); 
 
     [threshold_condition, trigger_value, threshold] = ...
         evaluate_trigger_condition( ...

@@ -37,19 +37,12 @@ switch lower(char(trigger_type))
 
 
     case 'state-relative'
-        %Sto considerando lo stato globale di ogni agente:
-        % in leaderless lo stato finale è [0, 0] quindi funziona, dimuinisce con il tempo
-        % in leader-follower lo stato finale è [2, 0] quindi più gli agenti sono vicini allo stato finale più la threshold è alta e tollera errori alti
-
-        %trigger threshold diverse in base al leader (che verifica lo stato corrente rispetto a x_d)
-        % e per follower (che verifica il suo spostamento, rispetto allo stato precedente)???
-        %sarebbe leader finche non arriva allo stato desired comunica e follower finche sono diversi dai vicini comunicano
+        %Trigger basato sullo stato dell'agente. 
+        %Calcoliamo la differenza tra lo stato attuale di ogni agente e l'ultimo stato al passo precedente
         state_vector = require_state_vector(state_vector, n, trigger_type);
 
-        %TO DO: justify!!!
         state_gain = get_scalar_param(trigger_params, 'state_gain', 0.5);
         trigger_value = norm(error_vector)^2;
-        %threshold = state_gain * norm(state_vector)^2 + epsilon_trigger;%+ epsilon per evitare Zeno behaviour e quindi comunicazione continua
 
 
         previous_state_vector = require_state_vector(previous_state_vector, n, trigger_type);
@@ -57,42 +50,17 @@ switch lower(char(trigger_type))
 
         state_rate_vector = (state_vector - previous_state_vector)/dt;
 
-        threshold = state_gain * norm(state_rate_vector)^2 + epsilon_trigger;
-
-        disagreement_tol = get_scalar_param(trigger_params, 'disagreement_tol', 1e-2);
-
-
+        threshold = state_gain * norm(state_rate_vector)^2 + epsilon_trigger;%+ epsilon per evitare Zeno behaviour e quindi comunicazione continua
 
 
     case 'state-disagreement'
         %Provando a fare uno stato combinato per diminuire le comunicazioni il più possibile
-        %da modificare e migliorare
 
-        %Qui noi decidiamo la threshold di trigger in base allo stato assoluto all'inizio e poi quando siamo vicini allo stato 
-        %si effettua uno switch ad una threshold di trigger in base al disagreement 
+        %Qui noi decidiamo la threshold di trigger in base allo stato dell'agaente (calcoliamo l'errore definito come la differenza tra lo stato attuale e lo stato precedente)
+        % Quando ho variazioni piccole di questo valore si effettua uno switch ad una threshold di trigger in base al disagreement 
         % (questo per diminuire le comunicazioni al massimo ed adattare in caso di stato finale diverso da 0)
-        %Il problema è nellop switch: quando si effettua lo switch abbiamo un cambiamento troppo brusco di threshold che aumneta temporaneamente
-        %troppo le comunicazioni (risultato quasi continuo nel momento di switch -> poi si tara di nuovo)
-        %Potremmo introdurre una probabilità di switch tra una condizione e l'aktra ed in base a quella decidere
-        %Questa parte è ancora un work in progress
+        %Abbiamo introdotto una probabilità di switch tra una condizione e l'altra per evitare switch troppo bruschi
 
-        %state_vector = require_state_vector(state_vector, n, trigger_type);
-
-        %parameters empirically chosen 
-        %TO DO: justify!!!
-        %state_gain = get_scalar_param(trigger_params, 'state_gain', 0.5);
-        %disagreement_gain = get_scalar_param( ...
-            %trigger_params, 'disagreement_gain', 0.9);
-        %disagreement_tol = get_scalar_param( ...
-            %trigger_params, 'disagreement_tol', 1e-2);
-
-        %trigger_value = norm(error_vector)^2;
-        %threshold = state_gain * norm(state_vector)^2 + epsilon_trigger;%+ epsilon per evitare Zen
-
-        %if norm(disagreement_vector) <= disagreement_tol
-            %threshold = disagreement_gain * norm(disagreement_vector)^2 + ...
-                %epsilon_trigger;
-        %end
 
         % Probabilistic switch between:
         %
@@ -116,7 +84,7 @@ switch lower(char(trigger_type))
         disagreement_tol = get_scalar_param(trigger_params, 'disagreement_tol', 1e-2);
         dt = get_scalar_param(trigger_params, 'dt', 1e-3);
 
-        lambda = 5; % >=1!!!!!! %5 va bene con damped
+        lambda = 5; % >=1!!!!!! 
 
         system_type = string(trigger_params.system_type);
 
@@ -135,6 +103,7 @@ switch lower(char(trigger_type))
                 state_rate_vector = (state_vector - previous_state_vector)/dt;
 
             case "undamped"
+                %non funziona con undamped!!!!!
 
                 % For the undamped system, the absolute state rate generally
                 % does not tend to zero when tracking a periodic trajectory.

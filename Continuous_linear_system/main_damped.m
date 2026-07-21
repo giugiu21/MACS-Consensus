@@ -77,10 +77,10 @@ trigger_params.k_spring = agent.k_spring;
 trigger_params.C = agent.C;
 
 trigger_params.system_type = 'damped';
-trigger_params.minimum_inter_event_time = 0.55; % [s] %forse posso alzare ancora <0.9 però che a 0.9 svalvola
+trigger_params.minimum_inter_event_time = 0.6; % [s] %forse posso alzare ancora <0.9 però che a 0.9 svalvola
 
 %state relative, state-disagreement parameters
-trigger_params.state_gain = 0.01; %0.5 prima
+trigger_params.state_gain = 0.5; 
 trigger_params.disagreement_gain = 0.4;
 trigger_params.disagreement_tol = 1e-1;
 trigger_params.dt = dt;

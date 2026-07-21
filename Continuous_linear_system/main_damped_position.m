@@ -110,7 +110,7 @@ trigger_params.system_type = 'damped';
 trigger_params.minimum_inter_event_time = 0.6; % [s]
 
 %state relative, state-disagreement parameters, user defined
-trigger_params.state_gain = 0.01; %0.5 prima
+trigger_params.state_gain = 0.5; 
 trigger_params.disagreement_gain = 0.4;
 trigger_params.disagreement_tol = 1e-1;
 trigger_params.dt = dt;
@@ -178,7 +178,6 @@ results.continuous.leaderless = ...
 %CONTROLLO: -> leader: u_1 = u_1,cons + u_d - K_reference(x_1 - x_d)
 %           -> altri agenti: u_i = u_i,cons + u_d 
 %feedback diretto rispetto ad x_d soltanto al leader
-% ATTENZIONE -> in questo momento u_d = 0
 
 %----------CASO CON AGGIUNTA DI UNA P_DESIRED DIVERSA DA 0---------
 %in questo caso u_d è diverso da 0
@@ -228,7 +227,6 @@ results.trigger.leaderless = ...
 %CONTROLLO: -> leader: u_1 = -K_consensus * sum(a_ij * (x_hat_1 - x_hat_j) - K_reference * (x_1 - x_d) + u_d)
 %           -> altri agenti: u_i = -K_consensus * sum(a_ij * (x_hat_1 - x_hat_j) + u_d) 
 %feedback diretto rispetto ad x_d è soltanto nel leader
-% ATTENZIONE -> in questo momento u_d = 0
 
 
 %----------CASO CON AGGIUNTA DI UNA P_DESIRED DIVERSA DA 0---------
