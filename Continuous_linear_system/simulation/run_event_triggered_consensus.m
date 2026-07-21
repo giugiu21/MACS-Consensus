@@ -48,6 +48,7 @@ function result = run_event_triggered_consensus( ...
     num_steps = numel(time);
 
     C_global = kron(eye(N), agent.C);
+    A_global = kron(eye(N), agent.A);
 
     %% Validate simulation inputs
 
@@ -99,9 +100,14 @@ function result = run_event_triggered_consensus( ...
         opts.trigger_params = struct();
     end
 
+    if ~isfield(opts, 'hold_mode') || isempty(opts.hold_mode)
+        opts.hold_mode = "zoh";
+    end
+
     control_case = lower(string(opts.control_case));
     system_type = lower(string(opts.system));
     trigger_type = string(opts.trigger_type);
+    hold_mode = lower(string(opts.hold_mode));
 
     sigma = opts.sigma;
     epsilon_trigger = opts.epsilon_trigger;
@@ -133,6 +139,19 @@ function result = run_event_triggered_consensus( ...
             'run_event_triggered_consensus:InvalidSystem', ...
             ['opts.system must be "equilibrium" ', ...
              'or "no-equilibrium".']);
+    end
+
+    %% Validate hold mode
+
+    valid_hold_modes = [
+        "zoh", ...
+        "model_based"
+    ];
+
+    if ~ismember(hold_mode, valid_hold_modes)
+        error( ...
+            'run_event_triggered_consensus:InvalidHoldMode', ...
+            'opts.hold_mode must be "zoh" or "model_based".');
     end
 
     %% Validate scalar trigger parameters
@@ -526,6 +545,11 @@ function result = run_event_triggered_consensus( ...
 
             % Forward Euler integration.
             x = x + dt * dx;
+
+            if hold_mode == "model_based"
+
+                x_hat = x_hat + dt * (A_global * x_hat);
+            end
         end
         x_previous = x_current;
     end
@@ -689,6 +713,8 @@ function result = run_event_triggered_consensus( ...
 
     result.communication_mode = ...
         "event_triggered";
+
+    result.hold_mode = hold_mode;
 
     result.control_case = control_case;
     result.system = system_type;
