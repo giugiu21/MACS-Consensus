@@ -41,10 +41,11 @@ switch lower(char(trigger_type))
         %Calcoliamo la differenza tra lo stato attuale di ogni agente e l'ultimo stato al passo precedente
         state_vector = require_state_vector(state_vector, n, trigger_type);
 
-        state_gain = get_scalar_param(trigger_params, 'state_gain', 0.5);
+        %Parameters
+        %TODO: justify!!!
+        state_gain = 0.05;
+
         trigger_value = norm(error_vector)^2;
-
-
         previous_state_vector = require_state_vector(previous_state_vector, n, trigger_type);
         dt = get_scalar_param(trigger_params, 'dt', 1e-3);
 
@@ -77,10 +78,9 @@ switch lower(char(trigger_type))
         previous_state_vector = require_state_vector(previous_state_vector, n, trigger_type);
         % Parameters
 
-        state_gain = get_scalar_param(trigger_params, 'state_gain', 0.5);
-
+        %TODO: justify!!!
+        state_gain = 0.5;
         disagreement_gain = get_scalar_param(trigger_params, 'disagreement_gain', 0.9);
-
         disagreement_tol = get_scalar_param(trigger_params, 'disagreement_tol', 1e-2);
         dt = get_scalar_param(trigger_params, 'dt', 1e-3);
 

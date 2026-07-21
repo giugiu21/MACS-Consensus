@@ -59,12 +59,12 @@ leader_id = 1; % leader chosen
 %options available for trigger type:
 %       - "absolute"
 %.      - "relative"
-%.      - "state-relative" -> potrebbe creare problemi con p_d, comunicazioni smettono troppo presto??
+%.      - "state-relative" 
 %.      - "state-disagreement"
 %.      - "weighted"
 %.      - ...?
 
-trigger_type = "state-disagreement";
+trigger_type = "state-relative";
 
 sigma = 0.05; % the smaller the number the more frequent the communications between agents
 epsilon_trigger = 1e-5;
@@ -80,7 +80,10 @@ trigger_params.system_type = 'damped';
 trigger_params.minimum_inter_event_time = 0.6; % [s] %forse posso alzare ancora <0.9 però che a 0.9 svalvola
 
 %state relative, state-disagreement parameters
-trigger_params.state_gain = 0.5; 
+%trigger_params.state_gain = 0.05; 
+%Definito direttamente in evaluate_trigger:
+%    per state-disagreement 0.5 
+%    per state-relative 0.05
 trigger_params.disagreement_gain = 0.4;
 trigger_params.disagreement_tol = 1e-1;
 trigger_params.dt = dt;

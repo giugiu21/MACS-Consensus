@@ -1,5 +1,5 @@
 function animate_mass_consensus( ...
-    time, y_history, agent, N, video_filename)
+    time, y_history, N, video_filename)
 % Animate agent positions and optionally save an MP4 video.
 %
 % y_history must have dimensions:

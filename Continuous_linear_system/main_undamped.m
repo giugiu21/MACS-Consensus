@@ -72,7 +72,7 @@ leader_id = 1;
 %.      - "weighted"
 %.      - ...?
 
-trigger_type = "relative";
+trigger_type = "state-relative";
 
 sigma = 0.2; % the smaller the number the more frequent the communications between agents
 epsilon_trigger = 5e-2;
