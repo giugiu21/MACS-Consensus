@@ -167,7 +167,7 @@ switch lower(char(trigger_type))
             (disagreement_vector' * W * disagreement_vector) + ...
             epsilon_trigger;
 
-    case '< '
+    case 'energy'
         W = get_energy_matrix(trigger_params, n);
         trigger_value = error_vector' * W * error_vector;
         threshold = sigma * ...
