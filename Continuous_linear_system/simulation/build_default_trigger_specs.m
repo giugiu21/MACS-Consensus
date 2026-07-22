@@ -1,8 +1,21 @@
-function trigger_specs = build_default_trigger_specs(agent, epsilon_trigger)
+function trigger_specs = build_default_trigger_specs( ...
+    agent, epsilon_trigger, dt, system_type, minimum_inter_event_time)
 % build the standard trigger configurations used by comparison scripts
 
-if nargin < 2
+if nargin < 2 || isempty(epsilon_trigger)
     epsilon_trigger = 1e-5;
+end
+
+if nargin < 3 || isempty(dt)
+    dt = 1e-3;
+end
+
+if nargin < 4 || isempty(system_type)
+    system_type = 'damped';
+end
+
+if nargin < 5 || isempty(minimum_inter_event_time)
+    minimum_inter_event_time = 0;
 end
 
 common_params = struct();
@@ -10,6 +23,9 @@ common_params.W = diag([1, 0.5]);
 common_params.mass = agent.mass;
 common_params.k_spring = agent.k_spring;
 common_params.C = agent.C;
+common_params.dt = dt;
+common_params.system_type = char(string(system_type));
+common_params.minimum_inter_event_time = minimum_inter_event_time;
 
 trigger_specs = struct( ...
     'name', {}, ...
