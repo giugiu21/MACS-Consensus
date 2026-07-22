@@ -1,15 +1,5 @@
 function plot_chung_kia_results(results, agents, graph, T_s, time, results_dir)
-% plot_chung_kia_results  –  Grafici per Chung & Kia (2020), stile coerente
-% con il resto del progetto (damped consensus comparison).
-%
-% Produce 4 figure:
-%   Fig 1 – Posizioni: open-loop vs CK leader-follower
-%   Fig 2 – Confronto 2×2: posizioni | velocità | controlli | errore
-%   Fig 3 – Errore di tracking per epoca (bar chart, per agente)
-%   Fig 4 – Convergenza: valore errore e soglia "zero" per agente selezionato
-%
-% UTILIZZO (aggiungere in fondo a main_chung_kia.m):
-%   plot_chung_kia_results(results, agents, graph, T_s, time, results_dir);
+% plot_chung_kia_results 
 
 if ~exist(results_dir, 'dir')
     mkdir(results_dir);
@@ -24,8 +14,7 @@ plot_mask     = time <= plot_end_time;
 
 agent_names = compose('agent %d', 1:N);
 
-% ── Calcola errore di tracking per ogni epoca ────────────────────────────
-% err(i, k) = |x^i(t_{k+1}) − x^0(t_k)|   (errore posizione)
+% err(i, k) = |x^i(t_{k+1}) − x^0(t_k)|   (error position)
 epoch_errors = zeros(N, n_ep);
 
 for k = 0 : n_ep - 1
@@ -38,11 +27,10 @@ for k = 0 : n_ep - 1
     end
 end
 
-epoch_indices = 0 : n_ep - 1;   % k = 0, 1, ..., n_ep-1
+epoch_indices = 0 : n_ep - 1;  
 
-% ════════════════════════════════════════════════════════════════════════
-%% FIGURA 1  –  Open-loop vs CK leader-follower  (stile Fig.1 del progetto)
-% ════════════════════════════════════════════════════════════════════════
+% fig.1
+
 fig1 = figure( ...
     'Name', 'open-loop vs CK leader-follower', ...
     'Position', [100, 100, 1000, 650]);
@@ -51,11 +39,11 @@ layout1 = tiledlayout(2, 1);
 layout1.TileSpacing = 'compact';
 layout1.Padding     = 'compact';
 
-% ── Open-loop: nessun controllo, ciascun agente oscilla liberamente ──────
+
 nexttile;
 
-% Simuliamo la risposta libera: ẋ = Ax, x(0) = x_init
-x_init_ol = squeeze(results.x_hist(:, :, 1));   % condizioni iniziali
+
+x_init_ol = squeeze(results.x_hist(:, :, 1));
 y_open = zeros(N, n_steps);
 
 for i = 1:N
@@ -78,7 +66,7 @@ ylabel('position');
 title('Open-loop: nessun controllo, nessuna comunicazione');
 xlim([0, plot_end_time]);
 
-% ── CK leader-follower ────────────────────────────────────────────────────
+
 nexttile;
 
 plot( ...
@@ -93,12 +81,12 @@ plot( ...
     results.leader_pos(plot_mask), ...
     'k--', 'LineWidth', 1.5);
 
-% Linee verticali agli istanti di campionamento
+
 for k = 0:n_ep
     xline(k * T_s, ':', 'Color', [.65 .65 .65], 'LineWidth', 0.8);
 end
 
-% Marcatori campioni leader (+) e arrivi follower (×)
+
 for k = 0 : n_ep - 1
     dt_val = time(2) - time(1);
     idx_s  = min(round(k     * T_s / dt_val) + 1, n_steps);
@@ -121,9 +109,8 @@ title(layout1, 'Open-loop vs CK leader-follower');
 saveas(fig1, fullfile(results_dir, 'ck_openloop_vs_leaderfollower.png'));
 saveas(fig1, fullfile(results_dir, 'ck_openloop_vs_leaderfollower.fig'));
 
-% ════════════════════════════════════════════════════════════════════════
-%% FIGURA 2  –  Confronto 2×2 
-% ════════════════════════════════════════════════════════════════════════
+% fig.2
+
 fig2 = figure( ...
     'Name', 'CK 2x2 comparison', ...
     'Position', [100, 100, 1200, 780]);
@@ -132,7 +119,6 @@ layout2 = tiledlayout(2, 2);
 layout2.TileSpacing = 'compact';
 layout2.Padding     = 'compact';
 
-% ── Posizioni ────────────────────────────────────────────────────────────
 nexttile;
 
 plot(time(plot_mask), results.pos(:, plot_mask)', 'LineWidth', 1.0);
@@ -148,7 +134,7 @@ title('posizioni — CK leader-follower');
 xlim([0, plot_end_time]);
 legend([agent_names, {'leader'}], 'Location', 'best');
 
-% ── Velocità ─────────────────────────────────────────────────────────────
+
 nexttile;
 
 plot(time(plot_mask), results.vel(:, plot_mask)', 'LineWidth', 1.0);
@@ -163,7 +149,7 @@ ylabel('velocity [m/s]');
 title('velocità');
 xlim([0, plot_end_time]);
 
-% ── Ingressi di controllo ─────────────────────────────────────────────────
+
 nexttile;
 
 plot(time(plot_mask), results.u_hist(:, plot_mask)', 'LineWidth', 1.0);
@@ -177,7 +163,7 @@ title('ingressi di controllo (minimum-energy)');
 xlim([0, plot_end_time]);
 legend(agent_names, 'Location', 'best');
 
-% ── Errore di tracking per epoca ─────────────────────────────────────────
+
 nexttile;
 
 semilogy(epoch_indices, epoch_errors', 'LineWidth', 1.2);
@@ -196,9 +182,8 @@ title(layout2, ...
 saveas(fig2, fullfile(results_dir, 'ck_comparison_2x2.png'));
 saveas(fig2, fullfile(results_dir, 'ck_comparison_2x2.fig'));
 
-% ════════════════════════════════════════════════════════════════════════
-%% FIGURA 3  –  Errore per epoca per agente 
-% ════════════════════════════════════════════════════════════════════════
+% fig.3
+
 fig3 = figure( ...
     'Name', 'tracking error per epoch', ...
     'Position', [100, 100, 1100, 520]);
@@ -207,10 +192,10 @@ layout3 = tiledlayout(1, 2);
 layout3.TileSpacing = 'compact';
 layout3.Padding     = 'compact';
 
-% ── Errore per agente, aggregato (mean su tutte le epoche eccetto k=0) ───
+
 nexttile;
 
-mean_err = mean(epoch_errors(:, 2:end), 2);   % escludi k=0 (transitorio)
+mean_err = mean(epoch_errors(:, 2:end), 2);   
 
 bar(1:N, mean_err);
 grid on;
@@ -219,7 +204,7 @@ ylabel('mean |error| [m]');
 title('errore medio per agente (epoche k≥1)');
 xticks(1:N);
 
-% ── Errore per epoca, aggregato (max su tutti gli agenti) ────────────────
+
 nexttile;
 
 bar(epoch_indices, max(epoch_errors)', 0.6);
@@ -234,14 +219,9 @@ title(layout3, 'Errore di tracking xⁱ(tₖ₊₁) − x⁰(tₖ)');
 saveas(fig3, fullfile(results_dir, 'ck_tracking_error_bar.png'));
 saveas(fig3, fullfile(results_dir, 'ck_tracking_error_bar.fig'));
 
-% ════════════════════════════════════════════════════════════════════════
-%% FIGURA 4  –  Valore errore e soglia per agente selezionato
-%%             
-% ════════════════════════════════════════════════════════════════════════
-% Analogo alla Fig.7 originale: mostra l'errore puntuale |xⁱ(t) − x⁰(tₖ)|
-% vs la soglia zero (il target che l'algoritmo deve raggiungere a fine epoca).
+% fig.4
 
-selected_agents = graph.N0_in(1);   % F1: direttamente connesso al leader
+selected_agents = graph.N0_in(1);  
 
 fig4 = figure( ...
     'Name', 'tracking error vs zero threshold', ...
@@ -251,10 +231,10 @@ layout4 = tiledlayout(2, 1);
 layout4.TileSpacing = 'compact';
 layout4.Padding     = 'compact';
 
-% ── Agente direttamente connesso al leader (F1) ───────────────────────────
+
 nexttile;
 
-% Costruisci x⁰(tₖ) come segnale "a gradini" (valore campionato del leader)
+
 leader_sampled = zeros(1, n_steps);
 dt_val = time(2) - time(1);
 for s = 1:n_steps
@@ -267,9 +247,8 @@ tracking_err_F1 = abs(results.pos(1, :) - leader_sampled);
 
 plot(time(plot_mask), tracking_err_F1(plot_mask), 'LineWidth', 1.1);
 hold on;
-% Soglia = 0 (target: errore nullo a fine epoca)
 plot(time(plot_mask), zeros(1, sum(plot_mask)), 'r--', 'LineWidth', 1.1);
-% Marcatori arrivo (fine epoca)
+
 for k = 0 : n_ep - 1
     idx_a = min(round((k+1) * T_s / dt_val) + 1, n_steps);
     plot((k+1)*T_s, tracking_err_F1(idx_a), 'ko', ...
@@ -284,7 +263,7 @@ legend('errore corrente', 'target (zero)', 'arrivo a tₖ₊₁', ...
     'Location', 'best');
 xlim([0, plot_end_time]);
 
-% ── Agente più lontano nella gerarchia (F5) ───────────────────────────────
+
 nexttile;
 
 tracking_err_F5 = abs(results.pos(N, :) - leader_sampled);

@@ -1,26 +1,20 @@
 function agents = init_heterogeneous_agents_5()
-% init_heterogeneous_agents_5  –  5 agenti MSD eterogenei sottosmorzati
+% init_heterogeneous_agents_5 
 %
-% Parametri adattati dalla Tabella 1 di Chung & Kia (2020),
-% "Distributed leader following of an active leader for linear
-%  heterogeneous multi-agent systems", Sys. & Control Letters 137.
+% 
 %
-% Tutti i follower sono SOTTOSMORZATI (ζ < 1): senza controllo oscillano
-% attorno all'equilibrio con ampiezza decrescente.
+% State: xⁱ = [position; speed]
+% Dynamics: ẋⁱ = Aⁱ xⁱ + Bⁱ uⁱ
 %
-% Stato: xⁱ = [posizione; velocità]
-% Dinamica: ẋⁱ = Aⁱ xⁱ + Bⁱ uⁱ
-%
-%   Aⁱ = [  0        1   ]      Bⁱ = [   0   ]
-%        [ -kⁱ/mⁱ  -bⁱ/mⁱ ]         [ 1/mⁱ ]
+
 
 params = [
 %   k       b       m
-    1.0,    0.5,    5.0;    % follower 1  ωₙ=0.447, ζ=0.112
-    2.0,    0.5,    15.0;   % follower 2  ωₙ=0.365, ζ=0.046
-    2.5,    1.5,    10.0;   % follower 3  ωₙ=0.500, ζ=0.212
-    3.0,    0.8,    8.0;    % follower 4  ωₙ=0.612, ζ=0.092
-    3.5,    1.5,    5.0;    % follower 5  ωₙ=0.837, ζ=0.260
+    1.0,    0.5,    5.0;   
+    2.0,    0.5,    15.0;   
+    2.5,    1.5,    10.0;   
+    3.0,    0.8,    8.0;    
+    3.5,    1.5,    5.0;    
 ];
 
 N      = size(params, 1);
@@ -35,7 +29,7 @@ for i = 1:N
         -k/m, -b/m];
     B = [0;
          1/m];
-    C = [1, 0];   % output: sola posizione
+    C = [1, 0];   
 
     agents{i}.k        = k;
     agents{i}.b        = b;
