@@ -64,7 +64,7 @@ leader_id = 1; % leader chosen
 %.      - "weighted"
 %.      - ...?
 
-trigger_type = "state-relative";
+trigger_type = "state-disagreement";
 
 sigma = 0.05; % the smaller the number the more frequent the communications between agents
 epsilon_trigger = 1e-5;
@@ -146,7 +146,7 @@ results.continuous.leaderless = ...
 
 %% Run continuous leader-follower case
 %CONTROLLO:  u = - (L x K_consensus) * x
-%CONTROLLO: -> leader: u_1 = u_1,cons - K_reference(x_1 - x_d)
+%CONTROLLO: -> leader: u_1 = u_1,cons - K_reference(x_1)
 %           -> altri agenti: u_i = u_i,cons 
 %feedback diretto rispetto ad x_d soltanto al leader
 % 

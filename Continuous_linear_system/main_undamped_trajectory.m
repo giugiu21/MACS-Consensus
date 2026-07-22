@@ -156,8 +156,8 @@ results.open_loop = ...
 
 %% Run continuous leaderless case
 
-%CONTROLLO: u_i = -K_consensus * sum(a_ij * (x_i - x_j))
-% nessun agente riceve x_d, nessun agente riceve il feedback di riferimento, il feedforward è ignorato
+%CONTROLLO: u_i = u_i,cons + u_d -K_reference * sum(a_ij * (x_i - x_d))
+% tutti gli agenti ricevono x_d
 
 opts = common_opts;
 
@@ -178,17 +178,10 @@ results.continuous.leaderless = ...
 
 %% Run continuous leader-follower case
 %CONTROLLO:  u = - (L x K_consensus) * x
-%CONTROLLO: -> leader: u_1 = u_1,cons + u_d - K_reference(x_1 - x_d)
+%CONTROLLO: -> leader: u_1 = u_1,cons + u_d - K_reference(x_1(t) - x_d(t))
 %           -> altri agenti: u_i = u_i,cons + u_d 
 %feedback diretto rispetto ad x_d soltanto al leader
-% ATTENZIONE -> in questo momento u_d = 0
 
-%----------CASO CON AGGIUNTA DI UNA P_DESIRED DIVERSA DA 0---------
-%in questo caso u_d è diverso da 0
-%.        !!!!!Qua tocca capire se va bene dare a tutti il + u_d perchè così facendo i follower 
-%         ricevono indirettamente p_d visto che u_d è calcolato in base a p_d
-%         MA se non sommo u_d gli agenti non hanno la forza necessaria per arrivare a p_d
-%         se sommo u_d però gli agenti conoscono indirettamente p_d quindi non capisco se è leader-follower puro
 
 opts = common_opts;
 
@@ -208,8 +201,8 @@ results.continuous.leader_follower = ...
         opts);
 
 %% Run event-triggered leaderless case
-%CONTROLLO: u_i = -K_consensus * sum(a_ij * (x_hat_i - x_hat_j))
-%usa gli stati trasmessi: x_hat_i è l'ultimo stato trasmesso dall'agente i
+%CONTROLLO: u_i = u_i,cons + u_d -K_reference * sum(a_ij * (x_i(t) - x_d(t)))
+%usa gli stati trasmessi?: x_hat_i è l'ultimo stato trasmesso dall'agente i
 opts = common_opts;
 
 opts.communication_mode = "event_triggered";
@@ -230,16 +223,8 @@ results.trigger.leaderless = ...
 %% Run event-triggered leader-follower case
 %CONTROLLO: -> leader: u_1 = -K_consensus * sum(a_ij * (x_hat_1 - x_hat_j) - K_reference * (x_1 - x_d) + u_d)
 %           -> altri agenti: u_i = -K_consensus * sum(a_ij * (x_hat_1 - x_hat_j) + u_d) 
-%feedback diretto rispetto ad x_d è soltanto nel leader
-% ATTENZIONE -> in questo momento u_d = 0
+%feedback diretto rispetto ad x_d(t) è soltanto nel leader
 
-
-%----------CASO CON AGGIUNTA DI UNA P_DESIRED DIVERSA DA 0---------
-%in questo caso u_d è diverso da 0
-%.        !!!!!Qua tocca capire se va bene dare a tutti il + u_d perchè così facendo i follower 
-%         ricevono indirettamente p_d visto che u_d è calcolato in base a p_d
-%         MA se non sommo u_d gli agenti non hanno la forza necessaria per arrivare a p_d
-%         se sommo u_d però gli agenti conoscono indirettamente p_d quindi non capisco se è leader-follower puro
 
 opts = common_opts;
 

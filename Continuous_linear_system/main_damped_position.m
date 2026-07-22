@@ -156,8 +156,8 @@ results.open_loop = ...
 
 %% Run continuous leaderless case
 
-%CONTROLLO: u_i = -K_consensus * sum(a_ij * (x_i - x_j))
-% nessun agente riceve x_d, nessun agente riceve il feedback di riferimento, il feedforward è ignorato
+%CONTROLLO: u_i = u_i,cons + u_d -K_reference * sum(a_ij * (x_i - x_d))
+% tutti gli agenti ricevono x_d
 
 opts = common_opts;
 
@@ -207,8 +207,8 @@ results.continuous.leader_follower = ...
         opts);
 
 %% Run event-triggered leaderless case
-%CONTROLLO: u_i = -K_consensus * sum(a_ij * (x_hat_i - x_hat_j))
-%usa gli stati trasmessi: x_hat_i è l'ultimo stato trasmesso dall'agente i
+%CONTROLLO: u_i = u_i,cons + u_d -K_reference * sum(a_ij * (x_i - x_d))
+%usa gli stati trasmessi?: x_hat_i è l'ultimo stato trasmesso dall'agente i
 opts = common_opts;
 
 opts.communication_mode = "event_triggered";

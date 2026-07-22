@@ -39,6 +39,7 @@ switch lower(char(trigger_type))
     case 'state-relative'
         %Trigger basato sullo stato dell'agente. 
         %Calcoliamo la differenza tra lo stato attuale di ogni agente e l'ultimo stato al passo precedente
+        %quantifica quanto rapidamente cambia lo stato
         state_vector = require_state_vector(state_vector, n, trigger_type);
 
         %Parameters
