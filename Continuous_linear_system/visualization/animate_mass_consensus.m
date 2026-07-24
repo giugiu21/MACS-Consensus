@@ -5,7 +5,7 @@ function animate_mass_consensus( ...
 % y_history must have dimensions:
 % N x numel(time)
 
-if nargin < 5
+if nargin < 4
     video_filename = "";
 end
 
