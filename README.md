@@ -48,7 +48,7 @@ Outputs (figures and videos) are written to `Continuous_linear_system/results/`.
 | `compare_damped_trigger_thresholds.m` | Side-by-side comparison of the four trigger rules (number of events vs final consensus error) for the damped plant. |
 | `heterogeneous agents (leader-follower)/main_chung_kia.m` | Heterogeneous LTI followers tracking an active nonlinear leader from sampled measurements (Chung & Kia, controllability-Gramian based). |
 
-## Repository layout
+## Folder layout
 
 ```
 Continuous_linear_system/
@@ -62,4 +62,17 @@ Continuous_linear_system/
   visualization/  MP4 animation of the agents
   results/        generated figures and videos
   heterogeneous agents (leader-follower)/   Chung & Kia experiment
+```
+
+Topology sweep
+A separate, self-contained module (Topology Sweep/) that studies how the communication graph affects consensus. It sweeps the network size N and the number of connections per node k and reports, for each case, the algebraic connectivity lambda_2, the settling time and the number of triggered communications, on the damped or undamped plant. Run main_topology_sweep after editing the small config block at the top; the folder adds its own paths, so nothing else is needed.
+
+## Folder layout
+```
+Topology Sweep/
+  main_topology_sweep.m         sweep over network size N and ring degree k
+  demo_rate_vs_connectivity.m   why lambda_2 does not set the consensus speed
+  functions/                    sweep helpers (run, measure convergence, plot)
+  lib/                          self-contained copies of the core functions
+  results/                      figures, CSV summaries and .mat outputs
 ```
